@@ -7,6 +7,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/plugin/dbresolver"
 )
 
 // GormMysql 初始化Mysql数据库
@@ -29,7 +30,28 @@ func GormMysql() *gorm.DB {
 		sqlDB, _ := db.DB()
 		sqlDB.SetMaxIdleConns(m.MaxIdleConns)
 		sqlDB.SetMaxOpenConns(m.MaxOpenConns)
+		RegisterSlave(db)
 		return db
+	}
+}
+
+func RegisterSlave(db *gorm.DB) {
+	var slaveList []gorm.Dialector
+	slave := global.GVA_CONFIG.SlaveMysql
+	for i := range slave {
+		mysqlConfig := mysql.Config{
+			DSN:                       slave[i].Dsn(), // DSN data source name
+			DefaultStringSize:         191,            // string 类型字段的默认长度
+			SkipInitializeWithVersion: false,          // 根据版本自动配置
+		}
+		slaveList = append(slaveList, mysql.New(mysqlConfig))
+	}
+	err := db.Use(dbresolver.Register(dbresolver.Config{
+		Replicas: slaveList,
+		Policy:   dbresolver.RandomPolicy{},
+	}))
+	if err != nil {
+		panic(err)
 	}
 }
 
