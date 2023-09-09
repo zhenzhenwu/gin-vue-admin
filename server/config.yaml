@@ -108,7 +108,7 @@ mysql:
     prefix: ""
     port: "3306"
     config: charset=utf8mb4&parseTime=True&loc=Local
-    db-name: gva
+    db-name: tcs6000
     username: root
     password: Aa@6447985
     path: 122.51.229.32
