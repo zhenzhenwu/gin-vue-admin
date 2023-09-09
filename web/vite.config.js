@@ -16,10 +16,11 @@ export default ({
   command,
   mode
 }) => {
-  const NODE_ENV = process.env.NODE_ENV || 'development'
+  const NODE_ENV = mode || 'development'
   const envFiles = [
     `.env.${NODE_ENV}`
   ]
+
   for (const file of envFiles) {
     const envConfig = dotenv.parse(fs.readFileSync(file))
     for (const k in envConfig) {

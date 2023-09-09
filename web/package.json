@@ -4,6 +4,7 @@
     "private": true,
     "scripts": {
         "serve": "node openDocument.js && vite --host --mode development",
+        "dev": "vite --host --mode staging",
         "build": "vite build --mode production",
         "limit-build": "npm install increase-memory-limit-fixbug cross-env -g && npm run fix-memory-limit && node ./limit && npm run build",
         "preview": "vite preview",
