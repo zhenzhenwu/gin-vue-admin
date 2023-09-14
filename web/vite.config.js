@@ -30,13 +30,12 @@ export default ({
 
   viteLogo(process.env)
 
-  const timestamp = Date.parse(new Date())
+  const timestamp = Date.parse(new Date().toString())
 
   const optimizeDeps = {}
 
   const alias = {
     '@': path.resolve(__dirname, './src'),
-    'vue$': 'vue/dist/vue.runtime.esm-bundler.js',
   }
 
   const esbuild = {}

@@ -71,6 +71,18 @@ func Routers() *gin.Engine {
 		exampleRouter.InitFileUploadAndDownloadRouter(PrivateGroup) // 文件上传下载功能路由
 
 	}
+	{
+		tenantRouter := router.RouterGroupApp.Tenant
+		tenantRouter.InitCsTenantRouter(PrivateGroup)
+		tenantRouter.InitCsTenantUserRouter(PrivateGroup)
+		tenantRouter.InitCsTenantAuthoritiesRouter(PrivateGroup)
+	}
+	{
+		operatorRouter := router.RouterGroupApp.Operator
+		operatorRouter.InitCsOperatorRouter(PrivateGroup)
+		operatorRouter.InitCsOperatorUsersRouter(PrivateGroup)
+		operatorRouter.InitCsOperatorAuthoritiesRouter(PrivateGroup)
+	}
 
 	global.GVA_LOG.Info("router register success")
 	return Router
