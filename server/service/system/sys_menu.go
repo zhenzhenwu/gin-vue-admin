@@ -242,7 +242,7 @@ func (menuService *MenuService) GetMenuAuthority(info *request.GetAuthorityId) (
 //	Author [SliverHorn](https://github.com/SliverHorn)
 func (menuService *MenuService) UserAuthorityDefaultRouter(user *system.SysUser, tenantID uint) {
 	var menuIds []string
-	tableName := utils.GetUserTableName(tenantID)
+	tableName := utils.GetAuthMenuTableName(tenantID)
 	err := global.GVA_DB.Table(tableName).Where("sys_authority_authority_id = ?", user.AuthorityId).Pluck("sys_base_menu_id", &menuIds).Error
 	if err != nil {
 		return
