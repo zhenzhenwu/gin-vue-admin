@@ -56,13 +56,9 @@ func RegisterTables() {
 		tenant.CsTenant{},
 		tenant.CsTenantMenus{},
 		tenant.CsTenantApis{},
-		tenant.CsTenantUser{},
-		tenant.CsTenantAuthorities{},
 		operator.CsOperator{},
 		operator.CsOperatorMenus{},
 		operator.CsOperatorApis{},
-		operator.CsOperatorUsers{},
-		operator.CsOperatorAuthorities{},
 	)
 	if err != nil {
 		global.GVA_LOG.Error("register table failed", zap.Error(err))

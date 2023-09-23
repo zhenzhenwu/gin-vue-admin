@@ -50,12 +50,13 @@ export const useUserStore = defineStore('user', () => {
   }
   /* 登录*/
   const LoginIn = async(loginInfo) => {
+    const tenant = router.currentRoute.value.query.tenant
     loadingInstance.value = ElLoading.service({
       fullscreen: true,
       text: '登录中，请稍候...',
     })
     try {
-      const res = await login(loginInfo)
+      const res = await login(loginInfo, { tenant })
       if (res.code === 0) {
         setUserInfo(res.data.user)
         setToken(res.data.token)

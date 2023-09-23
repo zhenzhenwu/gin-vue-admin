@@ -92,9 +92,6 @@
         <el-tab-pane label="角色api">
           <Apis ref="apis" :row="activeRow" @changeRow="changeRow" />
         </el-tab-pane>
-        <el-tab-pane label="资源权限">
-          <Datas ref="datas" :authority="tableData" :row="activeRow" @changeRow="changeRow" />
-        </el-tab-pane>
       </el-tabs>
     </el-drawer>
   </div>
@@ -111,7 +108,6 @@ import {
 
 import Menus from '@/view/superAdmin/authority/components/menus.vue'
 import Apis from '@/view/superAdmin/authority/components/apis.vue'
-import Datas from '@/view/superAdmin/authority/components/datas.vue'
 import WarningBar from '@/components/warningBar/warningBar.vue'
 
 import { ref } from 'vue'

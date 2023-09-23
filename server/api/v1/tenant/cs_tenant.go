@@ -211,3 +211,23 @@ func (csTenantApi *CsTenantApi) SetTenantMenus(c *gin.Context) {
 		response.OkWithMessage("设置成功", c)
 	}
 }
+
+func (csTenantApi *CsTenantApi) GetApisByTenantID(c *gin.Context) {
+	id := c.Query("tenantID")
+	if apis, err := csTenantService.GetTenantApis(id); err != nil {
+		global.GVA_LOG.Error("获取失败!", zap.Error(err))
+		response.FailWithMessage("获取失败", c)
+	} else {
+		response.OkWithData(apis, c)
+	}
+}
+
+func (csTenantApi *CsTenantApi) GetMenusByTenantID(c *gin.Context) {
+	id := c.Query("tenantID")
+	if apis, err := csTenantService.GetTenantMenus(id); err != nil {
+		global.GVA_LOG.Error("获取失败!", zap.Error(err))
+		response.FailWithMessage("获取失败", c)
+	} else {
+		response.OkWithData(apis, c)
+	}
+}

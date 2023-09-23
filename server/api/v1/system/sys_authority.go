@@ -27,6 +27,7 @@ type AuthorityApi struct{}
 func (a *AuthorityApi) CreateAuthority(c *gin.Context) {
 	var authority system.SysAuthority
 	err := c.ShouldBindJSON(&authority)
+	tenantID := utils.GetTenantID(c)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -37,12 +38,12 @@ func (a *AuthorityApi) CreateAuthority(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	if authBack, err := authorityService.CreateAuthority(authority); err != nil {
+	if authBack, err := authorityService.CreateAuthority(authority, tenantID); err != nil {
 		global.GVA_LOG.Error("创建失败!", zap.Error(err))
 		response.FailWithMessage("创建失败"+err.Error(), c)
 	} else {
 		_ = menuService.AddMenuAuthority(systemReq.DefaultMenu(), authority.AuthorityId)
-		_ = casbinService.UpdateCasbin(authority.AuthorityId, systemReq.DefaultCasbin())
+		_ = casbinService.UpdateCasbin(authority.AuthorityId, systemReq.DefaultCasbin(), tenantID)
 		response.OkWithDetailed(systemRes.SysAuthorityResponse{Authority: authBack}, "创建成功", c)
 	}
 }
@@ -59,6 +60,7 @@ func (a *AuthorityApi) CreateAuthority(c *gin.Context) {
 func (a *AuthorityApi) CopyAuthority(c *gin.Context) {
 	var copyInfo systemRes.SysAuthorityCopyResponse
 	err := c.ShouldBindJSON(&copyInfo)
+	tenantID := utils.GetTenantID(c)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -73,7 +75,7 @@ func (a *AuthorityApi) CopyAuthority(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	authBack, err := authorityService.CopyAuthority(copyInfo)
+	authBack, err := authorityService.CopyAuthority(copyInfo, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("拷贝失败!", zap.Error(err))
 		response.FailWithMessage("拷贝失败"+err.Error(), c)
@@ -94,6 +96,7 @@ func (a *AuthorityApi) CopyAuthority(c *gin.Context) {
 func (a *AuthorityApi) DeleteAuthority(c *gin.Context) {
 	var authority system.SysAuthority
 	err := c.ShouldBindJSON(&authority)
+	tenantId := utils.GetTenantID(c)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -103,7 +106,7 @@ func (a *AuthorityApi) DeleteAuthority(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err = authorityService.DeleteAuthority(&authority)
+	err = authorityService.DeleteAuthority(&authority, tenantId)
 	if err != nil { // 删除角色之前需要判断是否有用户正在使用此角色
 		global.GVA_LOG.Error("删除失败!", zap.Error(err))
 		response.FailWithMessage("删除失败"+err.Error(), c)
@@ -154,6 +157,7 @@ func (a *AuthorityApi) UpdateAuthority(c *gin.Context) {
 func (a *AuthorityApi) GetAuthorityList(c *gin.Context) {
 	var pageInfo request.PageInfo
 	err := c.ShouldBindJSON(&pageInfo)
+	tenantID := utils.GetTenantID(c)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -163,7 +167,7 @@ func (a *AuthorityApi) GetAuthorityList(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	list, total, err := authorityService.GetAuthorityInfoList(pageInfo)
+	list, total, err := authorityService.GetAuthorityInfoList(pageInfo, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithMessage("获取失败"+err.Error(), c)
@@ -175,34 +179,4 @@ func (a *AuthorityApi) GetAuthorityList(c *gin.Context) {
 		Page:     pageInfo.Page,
 		PageSize: pageInfo.PageSize,
 	}, "获取成功", c)
-}
-
-// SetDataAuthority
-// @Tags      Authority
-// @Summary   设置角色资源权限
-// @Security  ApiKeyAuth
-// @accept    application/json
-// @Produce   application/json
-// @Param     data  body      system.SysAuthority            true  "设置角色资源权限"
-// @Success   200   {object}  response.Response{msg=string}  "设置角色资源权限"
-// @Router    /authority/setDataAuthority [post]
-func (a *AuthorityApi) SetDataAuthority(c *gin.Context) {
-	var auth system.SysAuthority
-	err := c.ShouldBindJSON(&auth)
-	if err != nil {
-		response.FailWithMessage(err.Error(), c)
-		return
-	}
-	err = utils.Verify(auth, utils.AuthorityIdVerify)
-	if err != nil {
-		response.FailWithMessage(err.Error(), c)
-		return
-	}
-	err = authorityService.SetDataAuthority(auth)
-	if err != nil {
-		global.GVA_LOG.Error("设置失败!", zap.Error(err))
-		response.FailWithMessage("设置失败"+err.Error(), c)
-		return
-	}
-	response.OkWithMessage("设置成功", c)
 }

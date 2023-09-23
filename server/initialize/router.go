@@ -74,14 +74,10 @@ func Routers() *gin.Engine {
 	{
 		tenantRouter := router.RouterGroupApp.Tenant
 		tenantRouter.InitCsTenantRouter(PrivateGroup)
-		tenantRouter.InitCsTenantUserRouter(PrivateGroup)
-		tenantRouter.InitCsTenantAuthoritiesRouter(PrivateGroup)
 	}
 	{
 		operatorRouter := router.RouterGroupApp.Operator
 		operatorRouter.InitCsOperatorRouter(PrivateGroup)
-		operatorRouter.InitCsOperatorUsersRouter(PrivateGroup)
-		operatorRouter.InitCsOperatorAuthoritiesRouter(PrivateGroup)
 	}
 
 	global.GVA_LOG.Info("router register success")

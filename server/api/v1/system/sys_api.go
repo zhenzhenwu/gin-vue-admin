@@ -66,7 +66,8 @@ func (s *SystemApiApi) DeleteApi(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err = apiService.DeleteApi(api)
+	tenantID := utils.GetTenantID(c)
+	err = apiService.DeleteApi(api, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("删除失败!", zap.Error(err))
 		response.FailWithMessage("删除失败", c)
@@ -96,7 +97,8 @@ func (s *SystemApiApi) GetApiList(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	list, total, err := apiService.GetAPIInfoList(pageInfo.SysApi, pageInfo.PageInfo, pageInfo.OrderKey, pageInfo.Desc)
+	tenantID := utils.GetTenantID(c)
+	list, total, err := apiService.GetAPIInfoList(tenantID, pageInfo.SysApi, pageInfo.PageInfo, pageInfo.OrderKey, pageInfo.Desc)
 	if err != nil {
 		global.GVA_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithMessage("获取失败", c)
@@ -161,7 +163,8 @@ func (s *SystemApiApi) UpdateApi(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err = apiService.UpdateApi(api)
+	tenantID := utils.GetTenantID(c)
+	err = apiService.UpdateApi(api, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("修改失败!", zap.Error(err))
 		response.FailWithMessage("修改失败", c)
@@ -179,7 +182,8 @@ func (s *SystemApiApi) UpdateApi(c *gin.Context) {
 // @Success   200  {object}  response.Response{data=systemRes.SysAPIListResponse,msg=string}  "获取所有的Api 不分页,返回包括api列表"
 // @Router    /api/getAllApis [post]
 func (s *SystemApiApi) GetAllApis(c *gin.Context) {
-	apis, err := apiService.GetAllApis()
+	tenantID := utils.GetTenantID(c)
+	apis, err := apiService.GetAllApis(tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithMessage("获取失败", c)
@@ -204,7 +208,8 @@ func (s *SystemApiApi) DeleteApisByIds(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err = apiService.DeleteApisByIds(ids)
+	tenantID := utils.GetTenantID(c)
+	err = apiService.DeleteApisByIds(ids, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("删除失败!", zap.Error(err))
 		response.FailWithMessage("删除失败", c)
@@ -221,7 +226,8 @@ func (s *SystemApiApi) DeleteApisByIds(c *gin.Context) {
 // @Success   200   {object}  response.Response{msg=string}  "刷新成功"
 // @Router    /api/freshCasbin [get]
 func (s *SystemApiApi) FreshCasbin(c *gin.Context) {
-	err := apiService.FreshCasbin()
+	tenantID := utils.GetTenantID(c)
+	err := apiService.FreshCasbin(tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("刷新失败!", zap.Error(err))
 		response.FailWithMessage("刷新失败", c)

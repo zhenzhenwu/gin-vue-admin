@@ -3,11 +3,12 @@ import service from '@/utils/request'
 // @Produce  application/json
 // @Param data body {username:"string",password:"string"}
 // @Router /base/login [post]
-export const login = (data) => {
+export const login = (data,params) => {
   return service({
     url: '/base/login',
     method: 'post',
-    data: data
+    data: data,
+    params
   })
 }
 

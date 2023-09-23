@@ -2,6 +2,7 @@ package system
 
 import (
 	"errors"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"strconv"
 	"sync"
 
@@ -24,14 +25,14 @@ type CasbinService struct{}
 
 var CasbinServiceApp = new(CasbinService)
 
-func (casbinService *CasbinService) UpdateCasbin(AuthorityID uint, casbinInfos []request.CasbinInfo) error {
+func (casbinService *CasbinService) UpdateCasbin(AuthorityID uint, casbinInfos []request.CasbinInfo, tenantID uint) error {
 	authorityId := strconv.Itoa(int(AuthorityID))
-	casbinService.ClearCasbin(0, authorityId)
+	casbinService.ClearCasbin(tenantID, 0, authorityId)
 	rules := [][]string{}
 	for _, v := range casbinInfos {
 		rules = append(rules, []string{authorityId, v.Path, v.Method})
 	}
-	e := casbinService.Casbin()
+	e := casbinService.Casbin(tenantID)
 	success, _ := e.AddPolicies(rules)
 	if !success {
 		return errors.New("存在相同api,添加失败,请联系管理员")
@@ -45,12 +46,12 @@ func (casbinService *CasbinService) UpdateCasbin(AuthorityID uint, casbinInfos [
 //@param: oldPath string, newPath string, oldMethod string, newMethod string
 //@return: error
 
-func (casbinService *CasbinService) UpdateCasbinApi(oldPath string, newPath string, oldMethod string, newMethod string) error {
+func (casbinService *CasbinService) UpdateCasbinApi(oldPath string, newPath string, oldMethod string, newMethod string, tenantID uint) error {
 	err := global.GVA_DB.Model(&gormadapter.CasbinRule{}).Where("v1 = ? AND v2 = ?", oldPath, oldMethod).Updates(map[string]interface{}{
 		"v1": newPath,
 		"v2": newMethod,
 	}).Error
-	e := casbinService.Casbin()
+	e := casbinService.Casbin(tenantID)
 	err = e.LoadPolicy()
 	if err != nil {
 		return err
@@ -64,8 +65,8 @@ func (casbinService *CasbinService) UpdateCasbinApi(oldPath string, newPath stri
 //@param: authorityId string
 //@return: pathMaps []request.CasbinInfo
 
-func (casbinService *CasbinService) GetPolicyPathByAuthorityId(AuthorityID uint) (pathMaps []request.CasbinInfo) {
-	e := casbinService.Casbin()
+func (casbinService *CasbinService) GetPolicyPathByAuthorityId(AuthorityID uint, tenantID uint) (pathMaps []request.CasbinInfo) {
+	e := casbinService.Casbin(tenantID)
 	authorityId := strconv.Itoa(int(AuthorityID))
 	list := e.GetFilteredPolicy(0, authorityId)
 	for _, v := range list {
@@ -83,8 +84,8 @@ func (casbinService *CasbinService) GetPolicyPathByAuthorityId(AuthorityID uint)
 //@param: v int, p ...string
 //@return: bool
 
-func (casbinService *CasbinService) ClearCasbin(v int, p ...string) bool {
-	e := casbinService.Casbin()
+func (casbinService *CasbinService) ClearCasbin(tenantId uint, v int, p ...string) bool {
+	e := casbinService.Casbin(tenantId)
 	success, _ := e.RemoveFilteredPolicy(v, p...)
 	return success
 }
@@ -99,14 +100,13 @@ var (
 	once                 sync.Once
 )
 
-func (casbinService *CasbinService) Casbin() *casbin.SyncedCachedEnforcer {
-	once.Do(func() {
-		a, err := gormadapter.NewAdapterByDB(global.GVA_DB)
-		if err != nil {
-			zap.L().Error("适配数据库失败请检查casbin表是否为InnoDB引擎!", zap.Error(err))
-			return
-		}
-		text := `
+func (casbinService *CasbinService) Casbin(tenantID uint) *casbin.SyncedCachedEnforcer {
+	a, err := gormadapter.NewAdapterByDBUseTableName(global.GVA_DB, "", utils.GetCasbinName(tenantID))
+	if err != nil {
+		zap.L().Error("适配数据库失败请检查casbin表是否为InnoDB引擎!", zap.Error(err))
+		return nil
+	}
+	text := `
 		[request_definition]
 		r = sub, obj, act
 		
@@ -122,14 +122,13 @@ func (casbinService *CasbinService) Casbin() *casbin.SyncedCachedEnforcer {
 		[matchers]
 		m = r.sub == p.sub && keyMatch2(r.obj,p.obj) && r.act == p.act
 		`
-		m, err := model.NewModelFromString(text)
-		if err != nil {
-			zap.L().Error("字符串加载模型失败!", zap.Error(err))
-			return
-		}
-		syncedCachedEnforcer, _ = casbin.NewSyncedCachedEnforcer(m, a)
-		syncedCachedEnforcer.SetExpireTime(60 * 60)
-		_ = syncedCachedEnforcer.LoadPolicy()
-	})
+	m, err := model.NewModelFromString(text)
+	if err != nil {
+		zap.L().Error("字符串加载模型失败!", zap.Error(err))
+		return nil
+	}
+	syncedCachedEnforcer, _ = casbin.NewSyncedCachedEnforcer(m, a)
+	syncedCachedEnforcer.SetExpireTime(60 * 60)
+	_ = syncedCachedEnforcer.LoadPolicy()
 	return syncedCachedEnforcer
 }

@@ -21,10 +21,11 @@ func (s *CsTenantRouter) InitCsTenantRouter(Router *gin.RouterGroup) {
 		csTenantRouter.PUT("updateCsTenant", csTenantApi.UpdateCsTenant)              // 更新CsTenant
 		csTenantRouter.PUT("setTenantApis", csTenantApi.SetTenantApis)                // 系统分配租户api
 		csTenantRouter.PUT("setTenantMenus", csTenantApi.SetTenantMenus)              // 系统分配租户菜单
+		csTenantRouter.GET("getApisByTenantID", csTenantApi.GetApisByTenantID)        // 系统获取租户api
+		csTenantRouter.GET("getMenusByTenantID", csTenantApi.GetMenusByTenantID)      // 系统获取租户菜单
 	}
 	{
 		csTenantRouterWithoutRecord.GET("findCsTenant", csTenantApi.FindCsTenant)       // 根据ID获取CsTenant
 		csTenantRouterWithoutRecord.GET("getCsTenantList", csTenantApi.GetCsTenantList) // 获取CsTenant列表
-
 	}
 }

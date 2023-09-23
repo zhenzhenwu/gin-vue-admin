@@ -5,6 +5,7 @@ import (
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
 	systemReq "github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -72,11 +73,12 @@ func (a *AutoCodeHistoryApi) Delete(c *gin.Context) {
 func (a *AutoCodeHistoryApi) RollBack(c *gin.Context) {
 	var info systemReq.RollBack
 	err := c.ShouldBindJSON(&info)
+	tenantID := utils.GetTenantID(c)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err = autoCodeHistoryService.RollBack(&info)
+	err = autoCodeHistoryService.RollBack(&info, tenantID)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return

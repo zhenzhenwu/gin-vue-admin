@@ -86,3 +86,29 @@ func GetUserName(c *gin.Context) string {
 		return waitUse.Username
 	}
 }
+
+func GetTenantID(c *gin.Context) uint {
+	if claims, exists := c.Get("claims"); !exists {
+		if cl, err := GetClaims(c); err != nil {
+			return 0
+		} else {
+			return cl.BaseClaims.ID
+		}
+	} else {
+		waitUse := claims.(*systemReq.CustomClaims)
+		return waitUse.BaseClaims.TenantID
+	}
+}
+
+func GetOperatorID(c *gin.Context) uint {
+	if claims, exists := c.Get("claims"); !exists {
+		if cl, err := GetClaims(c); err != nil {
+			return 0
+		} else {
+			return cl.BaseClaims.ID
+		}
+	} else {
+		waitUse := claims.(*systemReq.CustomClaims)
+		return waitUse.BaseClaims.OperatorID
+	}
+}

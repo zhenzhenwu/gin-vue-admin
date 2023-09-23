@@ -10,12 +10,14 @@ import (
 	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
 	systemReq "github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
 	systemRes "github.com/flipped-aurora/gin-vue-admin/server/model/system/response"
+	"github.com/flipped-aurora/gin-vue-admin/server/service/tenant"
 	"github.com/flipped-aurora/gin-vue-admin/server/utils"
-
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
+
+var tenantServer = new(tenant.CsTenantService)
 
 // Login
 // @Tags     Base
@@ -28,7 +30,7 @@ func (b *BaseApi) Login(c *gin.Context) {
 	var l systemReq.Login
 	err := c.ShouldBindJSON(&l)
 	key := c.ClientIP()
-
+	tenantOnlyKey := c.Query("tenant")
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -51,7 +53,10 @@ func (b *BaseApi) Login(c *gin.Context) {
 
 	if !oc || store.Verify(l.CaptchaId, l.Captcha, true) {
 		u := &system.SysUser{Username: l.Username, Password: l.Password}
-		user, err := userService.Login(u)
+
+		tenantID := tenantServer.GetTenantIDByOnlyKey(tenantOnlyKey)
+
+		user, err := userService.Login(u, tenantID)
 		if err != nil {
 			global.GVA_LOG.Error("登陆失败! 用户名不存在或者密码错误!", zap.Error(err))
 			// 验证码次数+1
@@ -83,6 +88,8 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.SysUser) {
 		NickName:    user.NickName,
 		Username:    user.Username,
 		AuthorityId: user.AuthorityId,
+		TenantID:    user.TenantID,
+		OperatorID:  user.OperatorID,
 	})
 	token, err := j.CreateToken(claims)
 	if err != nil {
@@ -141,6 +148,7 @@ func (b *BaseApi) TokenNext(c *gin.Context, user system.SysUser) {
 // @Router   /user/admin_register [post]
 func (b *BaseApi) Register(c *gin.Context) {
 	var r systemReq.Register
+	tenantID := utils.GetTenantID(c)
 	err := c.ShouldBindJSON(&r)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
@@ -158,7 +166,7 @@ func (b *BaseApi) Register(c *gin.Context) {
 		})
 	}
 	user := &system.SysUser{Username: r.Username, NickName: r.NickName, Password: r.Password, HeaderImg: r.HeaderImg, AuthorityId: r.AuthorityId, Authorities: authorities, Enable: r.Enable, Phone: r.Phone, Email: r.Email}
-	userReturn, err := userService.Register(*user)
+	userReturn, err := userService.Register(*user, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("注册失败!", zap.Error(err))
 		response.FailWithDetailed(systemRes.SysUserResponse{User: userReturn}, "注册失败", c)
@@ -219,7 +227,8 @@ func (b *BaseApi) GetUserList(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	list, total, err := userService.GetUserInfoList(pageInfo)
+	tenantID := utils.GetTenantID(c)
+	list, total, err := userService.GetUserInfoList(pageInfo, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithMessage("获取失败", c)
@@ -428,7 +437,8 @@ func (b *BaseApi) SetSelfInfo(c *gin.Context) {
 // @Router    /user/getUserInfo [get]
 func (b *BaseApi) GetUserInfo(c *gin.Context) {
 	uuid := utils.GetUserUuid(c)
-	ReqUser, err := userService.GetUserInfo(uuid)
+	tenantID := utils.GetTenantID(c)
+	ReqUser, err := userService.GetUserInfo(uuid, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithMessage("获取失败", c)

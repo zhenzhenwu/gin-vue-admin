@@ -3,12 +3,14 @@ package tenant
 
 import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
+	"github.com/gofrs/uuid/v5"
 	"time"
 )
 
 // CsTenant 结构体
 type CsTenant struct {
 	global.GVA_MODEL
+	OnlyKey              uuid.UUID  `json:"onlyKey" form:"onlyKey" gorm:"column:only_key;comment:租户唯一标识;type:char(36);size:36;"`
 	Username             string     `json:"username" form:"username" gorm:"column:username;comment:租户名;"`
 	Password             string     `json:"password" form:"password" gorm:"column:password;comment:密码;"`
 	Nickname             string     `json:"nickname" form:"nickname" gorm:"column:nickname;comment:租户昵称;"`

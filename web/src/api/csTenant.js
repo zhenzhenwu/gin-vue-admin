@@ -95,3 +95,38 @@ export const getCsTenantList = (params) => {
     params
   })
 }
+
+
+
+export const setTenantApis = (data) =>{
+  return service({
+    url: '/csTenant/setTenantApis',
+    method: 'put',
+    data
+  })
+}
+
+export const setTenantMenus = (data) =>{
+  return service({
+    url: '/csTenant/setTenantMenus',
+    method: 'put',
+    data
+  })
+}
+
+
+export const getApisByTenantID = (params) =>{
+  return service({
+    url: '/csTenant/getApisByTenantID',
+    method: 'get',
+    params
+  })
+}
+
+export const getMenusByTenantID = (params) =>{
+  return service({
+    url: '/csTenant/getMenusByTenantID',
+    method: 'get',
+    params
+  })
+}

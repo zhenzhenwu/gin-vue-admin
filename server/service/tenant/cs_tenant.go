@@ -1,20 +1,100 @@
 package tenant
 
 import (
+	"errors"
+	adapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/request"
+	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/tenant"
 	tenantReq "github.com/flipped-aurora/gin-vue-admin/server/model/tenant/request"
+	system2 "github.com/flipped-aurora/gin-vue-admin/server/service/system"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
+	"github.com/gofrs/uuid/v5"
 	"gorm.io/gorm"
 )
 
 type CsTenantService struct {
 }
 
+func (csTenantService *CsTenantService) CreateTenantIDCasbin(tenantID uint) (err error) {
+	err = global.GVA_DB.Table(utils.GetCasbinName(tenantID)).AutoMigrate(&adapter.CasbinRule{})
+	return err
+}
+
+func (csTenantService *CsTenantService) CreateTenantIDAuthMenu(tenantID uint) (err error) {
+	err = global.GVA_DB.Table(utils.GetAuthMenuTableName(tenantID)).AutoMigrate(&system.SysAuthorityMenu{})
+	return err
+}
+
+func (csTenantService *CsTenantService) CreateTenetUserTableName(tenantID uint) (err error) {
+	err = global.GVA_DB.Table(utils.GetUserTableName(tenantID)).AutoMigrate(&system.SysUserTable{})
+	return err
+}
+
+func (csTenantService *CsTenantService) CreateTenetAuthsTable(tenantID uint) (err error) {
+	err = global.GVA_DB.Table(utils.GetAuthsTable(tenantID)).AutoMigrate(&system.SysAuthorityTable{})
+	return err
+}
+
+var sysUserServer = new(system2.UserService)
+var sysAuthorityServer = new(system2.AuthorityService)
+
 // CreateCsTenant 创建CsTenant记录
 // Author [piexlmax](https://github.com/piexlmax)
 func (csTenantService *CsTenantService) CreateCsTenant(csTenant *tenant.CsTenant) (err error) {
+
+	if global.GVA_DB.First(&tenant.CsTenant{}, "username = ?", csTenant.Username).Error == nil {
+		return errors.New("用户名已注册")
+	}
+	oldPassWord := csTenant.Password
+	csTenant.OnlyKey, _ = uuid.NewV4()
+	csTenant.Password = utils.BcryptHash(csTenant.Password)
 	err = global.GVA_DB.Create(csTenant).Error
+	if err != nil {
+		return err
+	}
+
+	err = csTenantService.CreateTenetUserTableName(csTenant.ID)
+	if err != nil {
+		return err
+	}
+
+	err = csTenantService.CreateTenetAuthsTable(csTenant.ID)
+	if err != nil {
+		return err
+	}
+
+	user := &system.SysUser{
+		Username: csTenant.Username,
+		Password: oldPassWord,
+	}
+	user.TenantID = csTenant.ID
+	user.NickName = "超级管理员"
+	user.HeaderImg = csTenant.Logo
+	user.AuthorityId = 888
+	_, err = sysUserServer.Register(*user, csTenant.ID)
+	if err != nil {
+		return err
+	}
+
+	auth := &system.SysAuthority{
+		AuthorityId:   888,
+		AuthorityName: "超级管理员",
+		ParentId:      utils.Pointer(uint(0)),
+		DefaultRouter: "dashboard",
+	}
+
+	_, err = sysAuthorityServer.CreateAuthority(*auth, csTenant.ID)
+	if err != nil {
+		return err
+	}
+
+	err = csTenantService.CreateTenantIDCasbin(csTenant.ID)
+	if err != nil {
+		return err
+	}
+	err = csTenantService.CreateTenantIDAuthMenu(csTenant.ID)
 	return err
 }
 
@@ -100,6 +180,11 @@ func (csTenantService *CsTenantService) SetTenantApis(tenantApis tenantReq.CsTen
 	})
 }
 
+func (csTenantService *CsTenantService) GetTenantApis(id string) (csTenantApis []tenant.CsTenantApis, err error) {
+	err = global.GVA_DB.Where("tenant_id = ?", id).Find(&csTenantApis).Error
+	return
+}
+
 func (csTenantService *CsTenantService) SetTenantMenus(tenantMenus tenantReq.CsTenantMenusReq) error {
 	var csTenantMenus []tenant.CsTenantMenus
 	return global.GVA_DB.Transaction(func(tx *gorm.DB) error {
@@ -115,4 +200,15 @@ func (csTenantService *CsTenantService) SetTenantMenus(tenantMenus tenantReq.CsT
 		}
 		return global.GVA_DB.Create(&csTenantMenus).Error
 	})
+}
+
+func (csTenantService *CsTenantService) GetTenantMenus(id string) (csTenantMenus []tenant.CsTenantMenus, err error) {
+	err = global.GVA_DB.Where("tenant_id = ?", id).Find(&csTenantMenus).Error
+	return
+}
+
+func (csTenantService *CsTenantService) GetTenantIDByOnlyKey(onlyKey string) uint {
+	var csTenant tenant.CsTenant
+	global.GVA_DB.Where("only_key = ?", onlyKey).First(&csTenant)
+	return csTenant.ID
 }

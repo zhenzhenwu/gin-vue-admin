@@ -2,6 +2,8 @@ package system
 
 import (
 	"errors"
+	"github.com/flipped-aurora/gin-vue-admin/server/model/tenant"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"strconv"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
@@ -20,14 +22,14 @@ type MenuService struct{}
 
 var MenuServiceApp = new(MenuService)
 
-func (menuService *MenuService) getMenuTreeMap(authorityId uint) (treeMap map[string][]system.SysMenu, err error) {
+func (menuService *MenuService) getMenuTreeMap(authorityId uint, tenantID uint) (treeMap map[string][]system.SysMenu, err error) {
 	var allMenus []system.SysMenu
 	var baseMenu []system.SysBaseMenu
 	var btns []system.SysAuthorityBtn
 	treeMap = make(map[string][]system.SysMenu)
-
+	tableName := utils.GetAuthMenuTableName(tenantID)
 	var SysAuthorityMenus []system.SysAuthorityMenu
-	err = global.GVA_DB.Where("sys_authority_authority_id = ?", authorityId).Find(&SysAuthorityMenus).Error
+	err = global.GVA_DB.Table(tableName).Where("sys_authority_authority_id = ?", authorityId).Find(&SysAuthorityMenus).Error
 	if err != nil {
 		return
 	}
@@ -76,8 +78,8 @@ func (menuService *MenuService) getMenuTreeMap(authorityId uint) (treeMap map[st
 //@param: authorityId string
 //@return: menus []system.SysMenu, err error
 
-func (menuService *MenuService) GetMenuTree(authorityId uint) (menus []system.SysMenu, err error) {
-	menuTree, err := menuService.getMenuTreeMap(authorityId)
+func (menuService *MenuService) GetMenuTree(authorityId uint, tenantID uint) (menus []system.SysMenu, err error) {
+	menuTree, err := menuService.getMenuTreeMap(authorityId, tenantID)
 	menus = menuTree["0"]
 	for i := 0; i < len(menus); i++ {
 		err = menuService.getChildrenList(&menus[i], menuTree)
@@ -104,9 +106,9 @@ func (menuService *MenuService) getChildrenList(menu *system.SysMenu, treeMap ma
 //@description: 获取路由分页
 //@return: list interface{}, total int64,err error
 
-func (menuService *MenuService) GetInfoList() (list interface{}, total int64, err error) {
+func (menuService *MenuService) GetInfoList(tenantID uint) (list interface{}, total int64, err error) {
 	var menuList []system.SysBaseMenu
-	treeMap, err := menuService.getBaseMenuTreeMap()
+	treeMap, err := menuService.getBaseMenuTreeMap(tenantID)
 	menuList = treeMap["0"]
 	for i := 0; i < len(menuList); i++ {
 		err = menuService.getBaseChildrenList(&menuList[i], treeMap)
@@ -146,12 +148,28 @@ func (menuService *MenuService) AddBaseMenu(menu system.SysBaseMenu) error {
 //@description: 获取路由总树map
 //@return: treeMap map[string][]system.SysBaseMenu, err error
 
-func (menuService *MenuService) getBaseMenuTreeMap() (treeMap map[string][]system.SysBaseMenu, err error) {
+func (menuService *MenuService) getBaseMenuTreeMap(tenantID uint) (treeMap map[string][]system.SysBaseMenu, err error) {
 	var allMenus []system.SysBaseMenu
 	treeMap = make(map[string][]system.SysBaseMenu)
 	err = global.GVA_DB.Order("sort").Preload("MenuBtn").Preload("Parameters").Find(&allMenus).Error
+	var tenantMenus []tenant.CsTenantMenus
+	if tenantID != 0 {
+		teErr := global.GVA_DB.Find(&tenantMenus, "tenant_id = ?", tenantID).Error
+		if err != nil {
+			return treeMap, teErr
+		}
+	}
 	for _, v := range allMenus {
-		treeMap[v.ParentId] = append(treeMap[v.ParentId], v)
+		if tenantID == 0 {
+			treeMap[v.ParentId] = append(treeMap[v.ParentId], v)
+		}
+		if tenantID != 0 {
+			for _, v1 := range tenantMenus {
+				if v.ID == v1.MenuId {
+					treeMap[v.ParentId] = append(treeMap[v.ParentId], v)
+				}
+			}
+		}
 	}
 	return treeMap, err
 }
@@ -161,8 +179,8 @@ func (menuService *MenuService) getBaseMenuTreeMap() (treeMap map[string][]syste
 //@description: 获取基础路由树
 //@return: menus []system.SysBaseMenu, err error
 
-func (menuService *MenuService) GetBaseMenuTree() (menus []system.SysBaseMenu, err error) {
-	treeMap, err := menuService.getBaseMenuTreeMap()
+func (menuService *MenuService) GetBaseMenuTree(tenantID uint) (menus []system.SysBaseMenu, err error) {
+	treeMap, err := menuService.getBaseMenuTreeMap(tenantID)
 	menus = treeMap["0"]
 	for i := 0; i < len(menus); i++ {
 		err = menuService.getBaseChildrenList(&menus[i], treeMap)
@@ -220,10 +238,12 @@ func (menuService *MenuService) GetMenuAuthority(info *request.GetAuthorityId) (
 }
 
 // UserAuthorityDefaultRouter 用户角色默认路由检查
-//  Author [SliverHorn](https://github.com/SliverHorn)
-func (menuService *MenuService) UserAuthorityDefaultRouter(user *system.SysUser) {
+//
+//	Author [SliverHorn](https://github.com/SliverHorn)
+func (menuService *MenuService) UserAuthorityDefaultRouter(user *system.SysUser, tenantID uint) {
 	var menuIds []string
-	err := global.GVA_DB.Model(&system.SysAuthorityMenu{}).Where("sys_authority_authority_id = ?", user.AuthorityId).Pluck("sys_base_menu_id", &menuIds).Error
+	tableName := utils.GetUserTableName(tenantID)
+	err := global.GVA_DB.Table(tableName).Where("sys_authority_authority_id = ?", user.AuthorityId).Pluck("sys_base_menu_id", &menuIds).Error
 	if err != nil {
 		return
 	}
