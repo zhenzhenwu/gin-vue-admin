@@ -37,6 +37,11 @@ func (csTenantService *CsTenantService) CreateTenetAuthsTable(tenantID uint) (er
 	return err
 }
 
+func (csTenantService *CsTenantService) CreateUserAuthorityTable(tenantID uint) (err error) {
+	err = global.GVA_DB.Table(utils.GetUserAuthorityTableName(tenantID)).AutoMigrate(&system.SysUserAuthority{})
+	return err
+}
+
 var sysUserServer = new(system2.UserService)
 var sysAuthorityServer = new(system2.AuthorityService)
 
@@ -61,6 +66,11 @@ func (csTenantService *CsTenantService) CreateCsTenant(csTenant *tenant.CsTenant
 	}
 
 	err = csTenantService.CreateTenetAuthsTable(csTenant.ID)
+	if err != nil {
+		return err
+	}
+
+	err = csTenantService.CreateUserAuthorityTable(csTenant.ID)
 	if err != nil {
 		return err
 	}

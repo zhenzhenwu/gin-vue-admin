@@ -30,13 +30,13 @@
               link
               @click="addAuthority(scope.row.authorityId)"
             >新增子角色</el-button>
-            <el-button
-              icon="copy-document"
+<!--            <el-button-->
+<!--              icon="copy-document"-->
 
-              type="primary"
-              link
-              @click="copyAuthorityFunc(scope.row)"
-            >拷贝</el-button>
+<!--              type="primary"-->
+<!--              link-->
+<!--              @click="copyAuthorityFunc(scope.row)"-->
+<!--            >拷贝</el-button>-->
             <el-button
               icon="edit"
 

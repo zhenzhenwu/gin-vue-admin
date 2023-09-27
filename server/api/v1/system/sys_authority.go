@@ -42,7 +42,7 @@ func (a *AuthorityApi) CreateAuthority(c *gin.Context) {
 		global.GVA_LOG.Error("创建失败!", zap.Error(err))
 		response.FailWithMessage("创建失败"+err.Error(), c)
 	} else {
-		_ = menuService.AddMenuAuthority(systemReq.DefaultMenu(), authority.AuthorityId)
+		_ = menuService.AddMenuAuthority(systemReq.DefaultMenu(), authority.AuthorityId, tenantID)
 		_ = casbinService.UpdateCasbin(authority.AuthorityId, systemReq.DefaultCasbin(), tenantID)
 		response.OkWithDetailed(systemRes.SysAuthorityResponse{Authority: authBack}, "创建成功", c)
 	}
@@ -58,6 +58,7 @@ func (a *AuthorityApi) CreateAuthority(c *gin.Context) {
 // @Success   200   {object}  response.Response{data=systemRes.SysAuthorityResponse,msg=string}  "拷贝角色,返回包括系统角色详情"
 // @Router    /authority/copyAuthority [post]
 func (a *AuthorityApi) CopyAuthority(c *gin.Context) {
+	// TODO: 后续完成
 	var copyInfo systemRes.SysAuthorityCopyResponse
 	err := c.ShouldBindJSON(&copyInfo)
 	tenantID := utils.GetTenantID(c)
@@ -125,8 +126,11 @@ func (a *AuthorityApi) DeleteAuthority(c *gin.Context) {
 // @Success   200   {object}  response.Response{data=systemRes.SysAuthorityResponse,msg=string}  "更新角色信息,返回包括系统角色详情"
 // @Router    /authority/updateAuthority [post]
 func (a *AuthorityApi) UpdateAuthority(c *gin.Context) {
+
 	var auth system.SysAuthority
 	err := c.ShouldBindJSON(&auth)
+	tenantID := utils.GetTenantID(c)
+
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -136,7 +140,7 @@ func (a *AuthorityApi) UpdateAuthority(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	authority, err := authorityService.UpdateAuthority(auth)
+	authority, err := authorityService.UpdateAuthority(auth, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("更新失败!", zap.Error(err))
 		response.FailWithMessage("更新失败"+err.Error(), c)

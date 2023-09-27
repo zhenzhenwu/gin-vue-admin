@@ -76,7 +76,8 @@ func (a *AuthorityMenuApi) AddMenuAuthority(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	if err := menuService.AddMenuAuthority(authorityMenu.Menus, authorityMenu.AuthorityId); err != nil {
+	tenantID := utils.GetTenantID(c)
+	if err := menuService.AddMenuAuthority(authorityMenu.Menus, authorityMenu.AuthorityId, tenantID); err != nil {
 		global.GVA_LOG.Error("添加失败!", zap.Error(err))
 		response.FailWithMessage("添加失败", c)
 	} else {
@@ -96,6 +97,7 @@ func (a *AuthorityMenuApi) AddMenuAuthority(c *gin.Context) {
 func (a *AuthorityMenuApi) GetMenuAuthority(c *gin.Context) {
 	var param request.GetAuthorityId
 	err := c.ShouldBindJSON(&param)
+	tenantID := utils.GetTenantID(c)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -105,7 +107,7 @@ func (a *AuthorityMenuApi) GetMenuAuthority(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	menus, err := menuService.GetMenuAuthority(&param)
+	menus, err := menuService.GetMenuAuthority(&param, tenantID)
 	if err != nil {
 		global.GVA_LOG.Error("获取失败!", zap.Error(err))
 		response.FailWithDetailed(systemRes.SysMenusResponse{Menus: menus}, "获取失败", c)

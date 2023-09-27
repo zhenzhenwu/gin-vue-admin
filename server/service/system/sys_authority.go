@@ -48,7 +48,7 @@ func (authorityService *AuthorityService) CopyAuthority(copyInfo response.SysAut
 		return authority, ErrRoleExistence
 	}
 	copyInfo.Authority.Children = []system.SysAuthority{}
-	menus, err := MenuServiceApp.GetMenuAuthority(&request.GetAuthorityId{AuthorityId: copyInfo.OldAuthorityId})
+	menus, err := MenuServiceApp.GetMenuAuthority(&request.GetAuthorityId{AuthorityId: copyInfo.OldAuthorityId}, tenantID)
 	if err != nil {
 		return
 	}
@@ -94,8 +94,9 @@ func (authorityService *AuthorityService) CopyAuthority(copyInfo response.SysAut
 //@param: auth model.SysAuthority
 //@return: authority system.SysAuthority, err error
 
-func (authorityService *AuthorityService) UpdateAuthority(auth system.SysAuthority) (authority system.SysAuthority, err error) {
-	err = global.GVA_DB.Where("authority_id = ?", auth.AuthorityId).First(&system.SysAuthority{}).Updates(&auth).Error
+func (authorityService *AuthorityService) UpdateAuthority(auth system.SysAuthority, tenantID uint) (authority system.SysAuthority, err error) {
+	tableName := utils.GetAuthsTable(tenantID)
+	err = global.GVA_DB.Table(tableName).Where("authority_id = ?", auth.AuthorityId).First(&system.SysAuthority{}).Updates(&auth).Error
 	return auth, err
 }
 
@@ -107,38 +108,49 @@ func (authorityService *AuthorityService) UpdateAuthority(auth system.SysAuthori
 
 func (authorityService *AuthorityService) DeleteAuthority(auth *system.SysAuthority, tenantId uint) (err error) {
 	// TODO: 找表
-	if errors.Is(global.GVA_DB.Debug().Preload("Users").First(&auth).Error, gorm.ErrRecordNotFound) {
+	tableName := utils.GetAuthsTable(tenantId)
+	userTable := utils.GetUserTableName(tenantId)
+	if errors.Is(global.GVA_DB.Table(tableName).Preload("Users", func(db *gorm.DB) *gorm.DB {
+		return db.Table(userTable)
+	}).First(&auth).Error, gorm.ErrRecordNotFound) {
 		return errors.New("该角色不存在")
 	}
 	if len(auth.Users) != 0 {
 		return errors.New("此角色有用户正在使用禁止删除")
 	}
-	if !errors.Is(global.GVA_DB.Where("authority_id = ?", auth.AuthorityId).First(&system.SysUser{}).Error, gorm.ErrRecordNotFound) {
+	if !errors.Is(global.GVA_DB.Table(userTable).Where("authority_id = ?", auth.AuthorityId).First(&system.SysUser{}).Error, gorm.ErrRecordNotFound) {
 		return errors.New("此角色有用户正在使用禁止删除")
 	}
-	if !errors.Is(global.GVA_DB.Where("parent_id = ?", auth.AuthorityId).First(&system.SysAuthority{}).Error, gorm.ErrRecordNotFound) {
+	if !errors.Is(global.GVA_DB.Table(tableName).Where("parent_id = ?", auth.AuthorityId).First(&system.SysAuthority{}).Error, gorm.ErrRecordNotFound) {
 		return errors.New("此角色存在子角色不允许删除")
 	}
-	db := global.GVA_DB.Preload("SysBaseMenus").Where("authority_id = ?", auth.AuthorityId).First(auth)
+	db := global.GVA_DB.Table(tableName).Preload("SysBaseMenus").Where("authority_id = ?", auth.AuthorityId).First(auth)
 	err = db.Unscoped().Delete(auth).Error
 	if err != nil {
 		return
 	}
 	if len(auth.SysBaseMenus) > 0 {
-		err = global.GVA_DB.Model(auth).Association("SysBaseMenus").Delete(auth.SysBaseMenus)
+		var ids []uint
+		for i := range auth.SysBaseMenus {
+			ids = append(ids, auth.SysBaseMenus[i].ID)
+		}
+		authMenuTable := utils.GetAuthMenuTableName(tenantId)
+		err = global.GVA_DB.Table(authMenuTable).Where("sys_base_menu_id in (?)", ids).Delete(&[]system.SysAuthorityMenu{}).Error
 		if err != nil {
 			return
 		}
 		// err = db.Association("SysBaseMenus").Delete(&auth)
 	}
-	err = global.GVA_DB.Delete(&[]system.SysUserAuthority{}, "sys_authority_authority_id = ?", auth.AuthorityId).Error
+	userAuthTable := utils.GetUserAuthorityTableName(tenantId)
+	err = global.GVA_DB.Table(userAuthTable).Delete(&[]system.SysUserAuthority{}, "sys_authority_authority_id = ?", auth.AuthorityId).Error
 	if err != nil {
 		return
 	}
-	err = global.GVA_DB.Delete(&[]system.SysAuthorityBtn{}, "authority_id = ?", auth.AuthorityId).Error
-	if err != nil {
-		return
-	}
+	// TODO: 按钮关联暂时未完成
+	//err = global.GVA_DB.Delete(&[]system.SysAuthorityBtn{}, "authority_id = ?", auth.AuthorityId).Error
+	//if err != nil {
+	//	return
+	//}
 	authorityId := strconv.Itoa(int(auth.AuthorityId))
 	CasbinServiceApp.ClearCasbin(tenantId, 0, authorityId)
 	return err
@@ -151,7 +163,6 @@ func (authorityService *AuthorityService) DeleteAuthority(auth *system.SysAuthor
 //@return: list interface{}, total int64, err error
 
 func (authorityService *AuthorityService) GetAuthorityInfoList(info request.PageInfo, tenantID uint) (list interface{}, total int64, err error) {
-	// TODO: 找表
 	tableName := utils.GetAuthsTable(tenantID)
 	limit := info.PageSize
 	offset := info.PageSize * (info.Page - 1)
@@ -184,11 +195,14 @@ func (authorityService *AuthorityService) GetAuthorityInfo(auth system.SysAuthor
 //@param: auth *model.SysAuthority
 //@return: error
 
-func (authorityService *AuthorityService) SetMenuAuthority(auth *system.SysAuthority) error {
-	var s system.SysAuthority
-	global.GVA_DB.Preload("SysBaseMenus").First(&s, "authority_id = ?", auth.AuthorityId)
-	err := global.GVA_DB.Model(&s).Association("SysBaseMenus").Replace(&auth.SysBaseMenus)
-	return err
+func (authorityService *AuthorityService) SetMenuAuthority(auth *system.SysAuthority, tenantID uint) error {
+	tableName := utils.GetAuthMenuTableName(tenantID)
+	global.GVA_DB.Table(tableName).Where("authority_id = ?", auth.AuthorityId).Delete(&[]system.SysAuthorityMenu{})
+	var authMenus []system.SysAuthorityMenu
+	for _, v := range auth.SysBaseMenus {
+		authMenus = append(authMenus, system.SysAuthorityMenu{AuthorityId: strconv.Itoa(int(auth.AuthorityId)), MenuId: strconv.Itoa(int(v.ID))})
+	}
+	return global.GVA_DB.Table(tableName).Create(authMenus).Error
 }
 
 //@author: [piexlmax](https://github.com/piexlmax)

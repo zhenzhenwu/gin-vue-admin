@@ -16,6 +16,13 @@ func GetAuthMenuTableName(tenantID uint) string {
 	return "sys_authority_menus"
 }
 
+func GetUserAuthorityTableName(tenantID uint) string {
+	if tenantID != 0 {
+		return fmt.Sprintf("cs_user_authority_tenant_%d", tenantID)
+	}
+	return "sys_user_authority"
+}
+
 func GetUserTableName(tenantID uint) string {
 	if tenantID != 0 {
 		return fmt.Sprintf("cs_user_tenant_%d", tenantID)

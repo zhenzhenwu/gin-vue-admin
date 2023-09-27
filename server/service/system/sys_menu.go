@@ -194,11 +194,11 @@ func (menuService *MenuService) GetBaseMenuTree(tenantID uint) (menus []system.S
 //@param: menus []model.SysBaseMenu, authorityId string
 //@return: err error
 
-func (menuService *MenuService) AddMenuAuthority(menus []system.SysBaseMenu, authorityId uint) (err error) {
+func (menuService *MenuService) AddMenuAuthority(menus []system.SysBaseMenu, authorityId uint, tenantID uint) (err error) {
 	var auth system.SysAuthority
 	auth.AuthorityId = authorityId
 	auth.SysBaseMenus = menus
-	err = AuthorityServiceApp.SetMenuAuthority(&auth)
+	err = AuthorityServiceApp.SetMenuAuthority(&auth, tenantID)
 	return err
 }
 
@@ -208,10 +208,11 @@ func (menuService *MenuService) AddMenuAuthority(menus []system.SysBaseMenu, aut
 //@param: info *request.GetAuthorityId
 //@return: menus []system.SysMenu, err error
 
-func (menuService *MenuService) GetMenuAuthority(info *request.GetAuthorityId) (menus []system.SysMenu, err error) {
+func (menuService *MenuService) GetMenuAuthority(info *request.GetAuthorityId, tenantID uint) (menus []system.SysMenu, err error) {
 	var baseMenu []system.SysBaseMenu
 	var SysAuthorityMenus []system.SysAuthorityMenu
-	err = global.GVA_DB.Where("sys_authority_authority_id = ?", info.AuthorityId).Find(&SysAuthorityMenus).Error
+	authMenuTable := utils.GetAuthMenuTableName(tenantID)
+	err = global.GVA_DB.Table(authMenuTable).Where("sys_authority_authority_id = ?", info.AuthorityId).Find(&SysAuthorityMenus).Error
 	if err != nil {
 		return
 	}
